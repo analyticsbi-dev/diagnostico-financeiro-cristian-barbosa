@@ -18,7 +18,7 @@ function RatioCard({title,value,text,tone="neutral"}:{title:string;value:string;
 function BarRow({label,value,total,color="green"}:{label:string;value:number;total:number;color?:"green"|"gold"|"red"}){const share=total>0?value/total:null;return <div className="composition-row"><div><span>{label}</span><strong>{money(value)} · {percentage(share)}</strong></div><div className="composition-track"><i className={color} style={{width:`${Math.max(0,Math.min(100,(share??0)*100))}%`}}/></div></div>}
 function RawGroup({title,rows}:{title:string;rows:[string,React.ReactNode][]}){return <article className="raw-group"><h3>{title}</h3><div>{rows.map(([label,value])=><p key={label}><span>{label}</span><strong>{value}</strong></p>)}</div></article>}
 
-function Sidebar(){return <aside className="sidebar"><div className="side-brand"><span className="brand-mark">CB</span><span>Cristian Barbosa<strong>Consultor Financeiro</strong></span></div><nav><span>MENU</span><a className="active" href="#">▦ <b>Diagnósticos</b></a><a href="#metodologia">◉ <b>Metodologia</b></a></nav><div className="side-note"><span>?</span><strong>Precisa de ajuda?</strong><small>Consulte as premissas dos cálculos.</small></div><footer>Dados protegidos<br/>Acesso interno</footer></aside>}
+function Sidebar(){return <aside className="sidebar"><div className="side-brand"><span className="brand-mark">CB</span><span>Cristian Barbosa<strong>Consultor Financeiro</strong></span></div><nav><span>MENU</span><a className="active" href="#">▦ <b>Diagnósticos</b></a></nav><footer>Dados protegidos<br/>Acesso interno</footer></aside>}
 
 export function FinancialDetail({diagnostic:d,onBack}:{diagnostic:Diagnostic;onBack:()=>void}){
   const m=calculateFinancialMetrics(d);

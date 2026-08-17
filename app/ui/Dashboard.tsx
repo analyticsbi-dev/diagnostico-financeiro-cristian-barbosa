@@ -37,7 +37,7 @@ export function Dashboard({initialDiagnostics,source,loadError}:{initialDiagnost
   </section></main>;
 }
 
-function Sidebar(){return <aside className="sidebar"><div className="side-brand"><span className="brand-mark">CB</span><span>Cristian Barbosa<strong>Consultor Financeiro</strong></span></div><nav><span>MENU</span><a className="active" href="#">▦ <b>Diagnósticos</b></a><a href="#metodologia">◉ <b>Metodologia</b></a></nav><div className="side-note"><span>?</span><strong>Precisa de ajuda?</strong><small>Consulte as premissas dos cálculos.</small></div><footer>Dados protegidos<br/>Acesso interno</footer></aside>}
+function Sidebar(){return <aside className="sidebar"><div className="side-brand"><span className="brand-mark">CB</span><span>Cristian Barbosa<strong>Consultor Financeiro</strong></span></div><nav><span>MENU</span><a className="active" href="#">▦ <b>Diagnósticos</b></a></nav><footer>Dados protegidos<br/>Acesso interno</footer></aside>}
 
 function Detail({diagnostic:d,onBack}:{diagnostic:Diagnostic;onBack:()=>void}){
   const m=metrics(d), revenue=m.revenue, costs=d.dre_impostos+d.dre_compras+d.dre_folha+d.dre_despesas_adm+m.financial;
