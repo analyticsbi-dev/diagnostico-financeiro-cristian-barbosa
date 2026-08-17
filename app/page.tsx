@@ -7,7 +7,7 @@ import { loadDiagnostics } from "./lib/diagnostics";
 export const dynamic = "force-dynamic";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
-  const session = (await cookies()).get("kohi_session")?.value;
+  const session = (await cookies()).get("diagnostico_session")?.value;
   if (!(await isAuthenticated(session))) return <Login error={(await searchParams).erro === "1"} />;
   const { diagnostics, source, error } = await loadDiagnostics();
   return <Dashboard initialDiagnostics={diagnostics} source={source} loadError={error} />;
