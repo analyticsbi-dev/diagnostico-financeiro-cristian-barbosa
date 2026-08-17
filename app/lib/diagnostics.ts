@@ -3,7 +3,7 @@ export type Diagnostic = {
   empresa_nome:string; cnpj:string|null; atividade:string; funcionarios_qtd:number;
   ativo_caixa_bancos:number; ativo_contas_receber:number; ativo_estoques:number; ativo_outros_receber:number; ativo_imobilizado:number;
   passivo_fornecedores:number; passivo_bancos_curto:number; passivo_impostos:number; passivo_outras_obrigacoes:number; passivo_capital_social:number; passivo_bancos_longo:number;
-  dre_faturamento:number; dre_impostos:number; dre_compras:number; dre_folha:number; dre_despesas_adm:number; created_at:string; status?:string;
+  dre_faturamento:number; dre_impostos:number; dre_compras:number; dre_folha:number; dre_despesas_adm:number; created_at:string; updated_at?:string; status?:string;
 };
 
 let cached:{at:number;data:Diagnostic[]}|null=null;

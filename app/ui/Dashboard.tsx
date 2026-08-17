@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { Diagnostic } from "../lib/diagnostics";
+import { calculateFinancialMetrics } from "../lib/financial-metrics";
+import { FinancialDetail } from "./FinancialDetail";
 
 const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format((cents||0)/100);
 const percent=(value:number,base:number)=>base?value/base*100:0;
@@ -9,14 +11,8 @@ const date=(value:string)=>new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:
 const initials=(name:string)=>name.split(" ").slice(0,2).map((part)=>part[0]).join("").toUpperCase();
 
 function metrics(d:Diagnostic){
-  const revenue=d.dre_faturamento||0, financial=(d.passivo_bancos_curto+d.passivo_bancos_longo)*.015;
-  const net=revenue-d.dre_impostos, gross=net-d.dre_compras, operating=gross-d.dre_folha-d.dre_despesas_adm-financial;
-  const currentAssets=d.ativo_caixa_bancos+d.ativo_contas_receber+d.ativo_estoques+d.ativo_outros_receber;
-  const totalAssets=currentAssets+d.ativo_imobilizado;
-  const currentLiabilities=d.passivo_fornecedores+d.passivo_bancos_curto+d.dre_despesas_adm+d.dre_folha+d.passivo_impostos+d.passivo_outras_obrigacoes;
-  const totalLiabilities=currentLiabilities+d.passivo_bancos_longo;
-  const accumulated=totalAssets-totalLiabilities-d.passivo_capital_social, equity=d.passivo_capital_social+accumulated;
-  return{revenue,financial,net,gross,operating,currentAssets,totalAssets,currentLiabilities,totalLiabilities,accumulated,equity};
+  const m=calculateFinancialMetrics(d);
+  return{...m,net:m.netRevenue,gross:m.grossResult,operating:m.operatingResult,financial:0};
 }
 
 function Status({value}:{value:number}){return <span className={`status ${value>=0?"positive":"negative"}`}><i/>{value>=0?"Lucro":"Prejuízo"}</span>}
@@ -28,7 +24,7 @@ export function Dashboard({initialDiagnostics,source,loadError}:{initialDiagnost
     const result=metrics(d).operating; const text=`${d.empresa_nome} ${d.nome}`.toLowerCase();
     return text.includes(query.toLowerCase())&&(range==="todas"||d.faturamento===range)&&(status==="todos"||(status==="lucro"?result>=0:result<0));
   }).sort((a,b)=>+new Date(b.created_at)-+new Date(a.created_at)),[initialDiagnostics,query,range,status]);
-  if(selected)return <Detail diagnostic={selected} onBack={()=>setSelected(null)}/>;
+  if(selected)return <FinancialDetail diagnostic={selected} onBack={()=>setSelected(null)}/>;
   const profitable=initialDiagnostics.filter((d)=>metrics(d).operating>=0).length;
   return <main className="app-shell"><Sidebar/><section className="workspace">
     <header className="topbar"><div><span className="eyebrow">Visão geral</span><h1>Diagnósticos financeiros</h1><p>Acompanhe e analise a saúde financeira de cada empresa.</p></div><div className="user-menu"><span className="avatar">CB</span><div><strong>Cristian Barbosa</strong><small>Consultor financeiro</small></div><form action="/api/logout" method="post"><button title="Sair">↗</button></form></div></header>
@@ -53,7 +49,7 @@ function Detail({diagnostic:d,onBack}:{diagnostic:Diagnostic;onBack:()=>void}){
   return <main className="app-shell"><Sidebar/><section className="workspace detail"><header className="detail-top"><button className="back" onClick={onBack}>← Voltar aos diagnósticos</button><form action="/api/logout" method="post"><button className="ghost">Sair</button></form></header>
     <section className="company-hero"><div className="hero-id"><span>{initials(d.empresa_nome)}</span><div><small>Diagnóstico financeiro</small><h1>{d.empresa_nome}</h1><p>{d.atividade} · {d.cidade}</p></div></div><div className="hero-contact"><div><small>Responsável</small><strong>{d.nome}</strong><span>{d.email}</span></div><a href={`https://wa.me/55${whatsapp}`} target="_blank" rel="noreferrer">Abrir WhatsApp ↗</a></div></section>
     <div className="detail-meta"><span>Preenchido em {date(d.created_at)}</span><span>{d.funcionarios_qtd} funcionário{d.funcionarios_qtd===1?"":"s"}</span><span>{d.faturamento}</span></div>
-    <section className="kpi-grid"><article><small>Faturamento mensal</small><strong>{money(revenue)}</strong><span>Receita operacional bruta</span></article><article><small>Resultado operacional</small><strong className={m.operating>=0?"green":"red"}>{money(m.operating)}</strong><span>{pct(percent(m.operating,revenue))} da receita</span></article><article><small>Patrimônio líquido</small><strong>{money(m.equity)}</strong><span>{pct(percent(m.equity,m.totalAssets))} do ativo</span></article><article><small>Eficiência por funcionário</small><strong>{money(efficiency*100)}</strong><span>{efficiencyLevel} · por funcionário</span></article></section>
+    <section className="kpi-grid executive-grid"><article><small>Faturamento</small><strong>{money(revenue)}</strong><span>Receita operacional bruta</span></article><article><small>Resultado operacional estimado</small><strong className={m.operating>=0?"green":"red"}>{money(m.operating)}</strong><span>Após impostos, compras, folha e administrativo</span></article><article><small>Margem operacional</small><strong className={m.operating>=0?"green":"red"}>{pct(percent(m.operating,revenue))}</strong><span>Resultado sobre o faturamento</span></article><article><small>Ativo total</small><strong>{money(m.totalAssets)}</strong><span>Circulante + imobilizado</span></article><article><small>Capital de giro líquido</small><strong className={m.workingCapital>=0?"green":"red"}>{money(m.workingCapital)}</strong><span>Ativo circulante − passivo circulante</span></article><article><small>Dívida bancária total</small><strong>{money(m.bankDebt)}</strong><span>Curto + longo prazo</span></article></section>
     {m.operating<0||costs>revenue?<div className="critical"><span>!</span><div><strong>Atenção crítica</strong><p>Os custos consomem {pct(percent(costs,revenue))} da receita. A empresa está operando {m.operating<0?"no prejuízo":"com margem de risco"}.</p></div></div>:<div className="positive-note"><span>✓</span><div><strong>Operação lucrativa</strong><p>A empresa preserva {pct(percent(m.operating,revenue))} da receita como resultado operacional.</p></div></div>}
     <section className="analysis-grid"><article className="analysis-card"><div className="card-title"><div><span className="eyebrow">DRE</span><h2>Resultado do mês</h2></div><Status value={m.operating}/></div><div className="financial-table">{dreRows.map(([label,value],i)=><div className={[2,4].includes(i)?"subtotal":""} key={label}><span>{label}</span><strong className={value<0?"minus":""}>{money(value)}</strong><small>{pct(percent(Math.abs(value),revenue))}</small></div>)}<div className="total"><span>{m.operating>=0?"LUCRO OPERACIONAL":"PREJUÍZO OPERACIONAL"}</span><strong>{money(m.operating)}</strong><small>{pct(percent(m.operating,revenue))}</small></div></div></article>
       <article className="analysis-card"><div className="card-title"><div><span className="eyebrow">Balanço patrimonial</span><h2>Posição patrimonial</h2></div><span className="pl-chip">PL {money(m.equity)}</span></div><div className="asset-chart"><div className="donut" style={{background:`conic-gradient(#2f8a68 0 ${assetCurrentPct}%,#d6ad57 ${assetCurrentPct}% 100%)`}}><span>{money(m.totalAssets)}</span><small>Total ativo</small></div><div className="legend"><span><i className="circulante"/>Circulante <b>{pct(assetCurrentPct)}</b></span><span><i className="nao"/>Não-circulante <b>{pct(100-assetCurrentPct)}</b></span></div></div><div className="balance-columns"><div><h3>ATIVO</h3><p><span>Ativo circulante</span><strong>{money(m.currentAssets)}</strong></p><p><span>Imobilizado</span><strong>{money(d.ativo_imobilizado)}</strong></p><p className="sum"><span>Total do ativo</span><strong>{money(m.totalAssets)}</strong></p></div><div><h3>PASSIVO + PL</h3><p><span>Passivo circulante</span><strong>{money(m.currentLiabilities)}</strong></p><p><span>Passivo não-circulante</span><strong>{money(d.passivo_bancos_longo)}</strong></p><p><span>Patrimônio líquido</span><strong>{money(m.equity)}</strong></p><p className="sum"><span>Total passivo + PL</span><strong>{money(m.totalLiabilities+m.equity)}</strong></p></div></div><div className="closed">✓ Balanço fechado: Ativo = Passivo + PL</div></article>
