@@ -6,6 +6,7 @@ export type Diagnostic = {
   dre_faturamento:number; dre_impostos:number; dre_compras:number; dre_folha:number; dre_despesas_adm:number; created_at:string; updated_at?:string; status?:string;
 };
 
+const CACHE_TTL_MS=60*60*1000;
 let cached:{at:number;data:Diagnostic[]}|null=null;
 function base64ToText(value:string){ return Buffer.from(value,"base64").toString("utf8"); }
 function pemToBytes(pem:string){ const body=pem.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g,""); return Uint8Array.from(atob(body),(c)=>c.charCodeAt(0)); }
@@ -26,17 +27,27 @@ async function serviceAccountToken(){
 
 async function fetchDriveData(){
   const fileId=process.env.GOOGLE_DRIVE_FILE_ID; const token=process.env.GOOGLE_DRIVE_ACCESS_TOKEN||await serviceAccountToken();
-  if(!fileId||!token)throw new Error("Integração com o Google Drive ainda não configurada.");
-  const response=await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,{headers:{Authorization:`Bearer ${token}`}});
+  if(!fileId)throw new Error("Arquivo do Google Drive ainda não configurado.");
+  const url=token
+    ?`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`
+    :`https://drive.usercontent.google.com/download?id=${encodeURIComponent(fileId)}&export=download&confirm=t`;
+  const response=await fetch(url,{headers:token?{Authorization:`Bearer ${token}`}:{},cache:"no-store"});
   if(!response.ok)throw new Error("Não foi possível ler o arquivo do Google Drive.");
-  return await response.json() as Diagnostic[];
+  const data=await response.json();
+  if(!Array.isArray(data))throw new Error("O arquivo do Google Drive não contém uma lista válida de diagnósticos.");
+  return data as Diagnostic[];
 }
 
 export async function loadDiagnostics():Promise<{diagnostics:Diagnostic[];source:string;error?:string}>{
   try{
-    if(cached&&Date.now()-cached.at<60_000)return{diagnostics:cached.data,source:"Drive · cache de 60s"};
-    let data:Diagnostic[]; let source="Google Drive · atualizado agora";
-    if(process.env.DIAGNOSTICS_JSON_BASE64){data=JSON.parse(base64ToText(process.env.DIAGNOSTICS_JSON_BASE64));source="Cópia de desenvolvimento do Drive";}else data=await fetchDriveData();
-    cached={at:Date.now(),data}; return{diagnostics:data,source};
-  }catch(error){return{diagnostics:[],source:"Google Drive",error:error instanceof Error?error.message:"Erro inesperado ao carregar os dados."};}
+    if(cached&&Date.now()-cached.at<CACHE_TTL_MS)return{diagnostics:cached.data,source:"Google Drive · atualização automática a cada hora"};
+    const data=await fetchDriveData();
+    cached={at:Date.now(),data}; return{diagnostics:data,source:"Google Drive · atualizado agora"};
+  }catch(error){
+    if(cached)return{diagnostics:cached.data,source:"Google Drive · última atualização válida",error:"Não foi possível atualizar o arquivo agora. Exibindo os últimos dados carregados."};
+    if(process.env.DIAGNOSTICS_JSON_BASE64){
+      try{return{diagnostics:JSON.parse(base64ToText(process.env.DIAGNOSTICS_JSON_BASE64)),source:"Cópia de segurança do Drive",error:"Não foi possível atualizar o arquivo agora. Exibindo a cópia de segurança."};}catch{}
+    }
+    return{diagnostics:[],source:"Google Drive",error:error instanceof Error?error.message:"Erro inesperado ao carregar os dados."};
+  }
 }
