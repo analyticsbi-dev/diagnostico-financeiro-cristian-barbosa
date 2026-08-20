@@ -29,6 +29,7 @@ export function FinancialDetail({diagnostic:d,onBack}:{diagnostic:Diagnostic;onB
   const liquidityTone=m.currentLiquidity==null?"neutral":m.currentLiquidity>=1?"good":"bad";
   const capitalTone=m.workingCapital>0?"good":m.workingCapital<0?"bad":"warn";
   const resultTone=m.operatingResult>=0?"good":"bad";
+  const assetCurrentShare=m.totalAssets>0?m.currentAssets/m.totalAssets:null;
   const expenseItems=[{label:"Impostos",value:m.taxes,color:"gold" as const},{label:"Compras",value:m.purchases,color:"green" as const},{label:"Folha",value:m.payroll,color:"green" as const},{label:"Administrativo",value:m.admin,color:"gold" as const}];
   const dreRows=[
     {label:"Receita Operacional Bruta",value:m.revenue,emphasis:true},
