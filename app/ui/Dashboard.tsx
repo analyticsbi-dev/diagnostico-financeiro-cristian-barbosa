@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import type { Diagnostic } from "../lib/diagnostics";
 import { calculateFinancialMetrics } from "../lib/financial-metrics";
 import { FinancialDetail } from "./FinancialDetail";
+import type { ConsultantConfig } from "../lib/consultant-config";
 
 const money=(cents:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL",maximumFractionDigits:0}).format((cents||0)/100);
 const percent=(value:number,base:number)=>base?value/base*100:0;
@@ -18,13 +19,13 @@ function metrics(d:Diagnostic){
 function Status({value}:{value:number}){return <span className={`status ${value>=0?"positive":"negative"}`}><i/>{value>=0?"Lucro":"Prejuízo"}</span>}
 function Health({label,value,good,warn}:{label:string;value:number;good:number;warn:number}){const level=value<=good?"good":value<=warn?"warn":"bad";return <div className="health-row"><span><i className={level}/>{label}</span><strong>{pct(value)}</strong><small>{level==="good"?"Saudável":level==="warn"?"Atenção":"Crítico"}</small></div>}
 
-export function Dashboard({initialDiagnostics,source,loadError}:{initialDiagnostics:Diagnostic[];source:string;loadError?:string}){
+export function Dashboard({initialDiagnostics,source,loadError,consultant}:{initialDiagnostics:Diagnostic[];source:string;loadError?:string;consultant:ConsultantConfig}){
   const [selected,setSelected]=useState<Diagnostic|null>(null),[query,setQuery]=useState(""),[range,setRange]=useState("todas"),[status,setStatus]=useState("todos");
   const rows=useMemo(()=>initialDiagnostics.filter((d)=>{
     const result=metrics(d).operating; const text=`${d.empresa_nome} ${d.nome}`.toLowerCase();
     return text.includes(query.toLowerCase())&&(range==="todas"||d.faturamento===range)&&(status==="todos"||(status==="lucro"?result>=0:result<0));
   }).sort((a,b)=>+new Date(b.created_at)-+new Date(a.created_at)),[initialDiagnostics,query,range,status]);
-  if(selected)return <FinancialDetail diagnostic={selected} onBack={()=>setSelected(null)}/>;
+  if(selected)return <FinancialDetail diagnostic={selected} consultant={consultant} onBack={()=>setSelected(null)}/>;
   const profitable=initialDiagnostics.filter((d)=>metrics(d).operating>=0).length;
   return <main className="app-shell"><Sidebar/><section className="workspace">
     <header className="topbar"><div><span className="eyebrow">Visão geral</span><h1>Diagnósticos financeiros</h1><p>Acompanhe e analise a saúde financeira de cada empresa.</p></div><div className="user-menu"><span className="avatar">CB</span><div><strong>Cristian Barbosa</strong><small>Consultor financeiro</small></div><form action="/api/logout" method="post"><button title="Sair">↗</button></form></div></header>
